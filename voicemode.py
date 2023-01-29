@@ -1,14 +1,8 @@
 import pyaudio
 import numpy as np
-from matplotlib import pyplot as plt
 import threading
 import whisper
-import scipy.io.wavfile as wavfile
 import brain
-
-
-import openai
-import voice
 
 
 CHUNKSIZE = 8192 # fixed chunk size
