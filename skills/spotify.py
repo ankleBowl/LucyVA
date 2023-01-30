@@ -247,25 +247,20 @@ class Spotify(Skill):
                 urls.append(song['uri'])
             try:
                 if sp.devices()['devices'] == []:
-                    path = os.path.dirname(os.path.abspath(__file__))
-                    index = os.path.join(path, 'spotify/index.html')
-                    index_new = os.path.join(path, 'spotify/index-new.html')
-
-                    html = ""
-                    with open(index, 'r') as f:
-                        html = f.read().replace('(TOKEN)', self.token)
-                    with open(index_new, 'w') as f:
-                        f.write(html)
-
-                    webbrowser.open('file://' + index_new, new=2)
-
-                    return "I'm sorry, I couldn't find any devices to play on."
+                    print("No devices found")
+                    self.launch_player()
+                active_device = sp.current_playback()
+                if active_device == None:
+                    sp.transfer_playback(sp.devices()['devices'][0]['id'])
                 sp.start_playback(uris=urls)
             except spotipy.client.SpotifyException:
                 self.get_new_token()
-
                 if sp.devices()['devices'] == []:
-                    return "I'm sorry, I couldn't find any devices to play on."
+                    print("No devices found")
+                    self.launch_player()
+                active_device = sp.current_playback()
+                if active_device == None:
+                    sp.transfer_playback(sp.devices()['devices'][0]['id'])
                 sp.start_playback(uris=urls)
 
             if (len(songstoplay) == 1):
@@ -274,6 +269,22 @@ class Spotify(Skill):
                 return "Playing " + str(len(songstoplay)) + " songs, starting with " + songstoplay[0]["name"] + " by " + songstoplay[0]["artist"]
         else:
             return "I'm sorry, I couldn't find anything to play."
+
+    def launch_player(self):
+        path = os.path.dirname(os.path.abspath(__file__))
+        index = os.path.join(path, 'spotify/index.html')
+        index_new = os.path.join(path, 'spotify/index-new.html')
+
+        html = ""
+        if os.path.exists(index_new):
+            os.remove(index_new)
+        with open(index, 'r') as f:
+            html = f.read().replace('(TOKEN)', self.token)
+        with open(index_new, 'w') as f:
+            f.write(html)
+
+        webbrowser.open('file://' + index_new)
+        time.sleep(3)
 
     def extract_song_info(self, userIn):
         inputs = tokenizer(userIn, return_tensors="pt")
