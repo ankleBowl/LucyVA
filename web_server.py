@@ -3,7 +3,7 @@ import logging
 
 app = flask.Flask(__name__)
 
-IP_ADDRESS = "127.0.0.1"
+IP_ADDRESS = "0.0.0.0"
 PORT = 2000
 IS_SSL = False
 
