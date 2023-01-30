@@ -6,9 +6,13 @@ from similarity import get_similarity
 import threading
 import os
 from web_server import add_route, get_server_ip
+from config import SPOTIFY_CLIENT_SECRET
 from voice import say
 import webbrowser
 import time
+import random
+import requests
+import base64
 
 from transformers import AutoModelForTokenClassification, AutoTokenizer
 model = AutoModelForTokenClassification.from_pretrained("ankleBowl/autotrain-lucy-song-request-1537055286")
@@ -62,41 +66,68 @@ class Spotify(Skill):
                 
         global sp
 
-        token = ""
+        self.refresh_token = ""
         if not os.path.exists("skills/spotify/token.txt"):
             with open("skills/spotify/token.txt", "w") as f:
                 f.write("")
 
         with open("skills/spotify/token.txt", "r") as f:
-            token = f.read()
+            self.refresh_token = f.read()
+
+        if self.refresh_token == "":
+            return "I'm sorry... but I couldn't connect to Spotify. You'll need to go to my IP address, slash spotify, slash login, if you want to reconnect"
 
         try:
-            sp = spotipy.Spotify(auth=token)
-            sp.current_user()
-            self.log("OAuth login successful")
+            self.get_new_token()
         except:
             return "I'm sorry... but I couldn't connect to Spotify. You'll need to go to my IP address, slash spotify, slash login, if you want to reconnect"
-    
+
+    def get_new_token(self):
+        global sp
+
+        data = {
+            "grant_type": 'refresh_token',
+            "refresh_token": self.refresh_token,
+        }
+
+        url_encoded = ""
+        for key in data:
+            url_encoded += key + "=" + data[key] + "&"
+        url_encoded = url_encoded[:-1]
+
+        client_and_secret = SP_CI + ":" + SPOTIFY_CLIENT_SECRET
+        client_and_secret = client_and_secret.encode("ascii")
+        client_and_secret = base64.b64encode(client_and_secret)
+        client_and_secret = client_and_secret.decode("ascii")
+
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Authorization": "Basic " + client_and_secret
+        }
+
+        r = requests.post(AUTH_URL, data=url_encoded, headers=headers)
+        r = r.json()
+        print(r)
+        self.token = r["access_token"]
+
+        sp = spotipy.Spotify(auth=self.token)
+        sp.current_user()
+        self.log("OAuth login successful")
+
     def handle_signin(self, data):
-        # if data == "player":
-        #     token = ""
-        #     with open("skills/spotify/token.txt", "r") as f:
-        #         token = f.read()
-        #     login_page = ""
-        #     with open("skills/spotify/index.html", "r") as f:
-        #         login_page = f.read()
-        #     login_page = login_page.replace("(TOKEN)", token)
-        #     return login_page
-        if data != "login":
+        if "token" in data:
+            token = data.split("-seperator-")[1]
+            token = token.split("=")[1]
+            os.remove("skills/spotify/token.txt")
             with open("skills/spotify/token.txt", "w") as f:
-                f.write(data)
+                f.write(token)
             self.load()
             say("You should be all good to go now. I've connected to Spotify.")
             return "You can close this window now."
         else:
             url_to_direct_to = "https://accounts.spotify.com/authorize"
             url_to_direct_to += "?client_id=" + SP_CI
-            url_to_direct_to += "&response_type=token"
+            url_to_direct_to += "&response_type=code"
             url_to_direct_to += "&redirect_uri=" + SP_URL
             url_to_direct_to += "&scope=" + SCOPE
             url_to_direct_to += "&show_dialog=true"
@@ -106,9 +137,12 @@ class Spotify(Skill):
                 login_page = f.read()
             login_page = login_page.replace("(URL)", url_to_direct_to)
             login_page = login_page.replace("(SITE_URL)", get_server_ip())
+            login_page = login_page.replace("(REDIR_URL)", SP_URL)
+            login_page = login_page.replace("(CLIENT_ID)", SP_CI)
+            login_page = login_page.replace("(SPOTIFY_SECRET)", SPOTIFY_CLIENT_SECRET)
+
             return login_page
 
-    
     def get_similarity(self, userInput):
         possibly_requested_song, possibly_requested_album, possibly_requested_artist = self.extract_song_info(userInput)
 
@@ -173,19 +207,10 @@ class Spotify(Skill):
                     self.log("Adding song: " + track['name'] + " by " + track['artists'][0]['name'])
                     songstoplay.append({"name": track['name'], "artist": track['artists'][0]['name'], "album": track['album']['name'], "uri": track['uri']})
         elif song_name != "":
-            # searching for song
             self.log("Searching for song")
-            # searchquery = 'track:' + song_name
-            # if (artist_name != ""):
-            #     searchquery += ' artist:' + artist_name
-            # if (album_name != ""):
-            #     searchquery += ' album:' + album_name
             searchquery = song_name
             if (artist_name != ""):
-                # searchquery += ' by ' + artist_name
                 searchquery += ' ' + artist_name
-            # if (album_name != ""):
-            #     searchquery += ' from ' + album_name
             results = sp.search(q=searchquery, type='track', limit=10)
             true_song = ""
             true_song_similarity = 0
@@ -221,33 +246,27 @@ class Spotify(Skill):
             for song in songstoplay:
                 urls.append(song['uri'])
             try:
-                sp.start_playback(uris=urls)
-            except:
-                # UPDATING THE BROWSER PAGE
-                path = os.path.dirname(os.path.abspath(__file__))
-                path += "/spotify/index"
-                filedata = ""
-                with open(path + ".html", 'r') as file :
-                    filedata = file.read()
-                    token = ""
-                    with open("skills/spotify/token.txt", "r") as f:
-                        token = f.read()
-                    filedata = filedata.replace("(TOKEN)", token)
-                if os.path.exists(path + "-new.html"):
-                    os.remove(path + "-new.html")
-                with open(path + "-new.html", 'w') as file:
-                    file.write(filedata)
-                webbrowser.open("file://" + path + "-new.html")
-                time.sleep(3)
+                if sp.devices()['devices'] == []:
+                    path = os.path.dirname(os.path.abspath(__file__))
+                    index = os.path.join(path, 'spotify/index.html')
+                    index_new = os.path.join(path, 'spotify/index-new.html')
 
-                # QUERY DEVICES, TRANSFER PLAYBACK, AND PLAY SONGS (SOMETHINGS WRONG HERE)
-                devices = sp.devices()
-                sp.transfer_playback(devices['devices'][0]['id'])
-                print("Transferred playback to " + devices['devices'][0]['name'])
-                try:
-                    sp.start_playback(uris=urls)
-                except:
-                    pass
+                    html = ""
+                    with open(index, 'r') as f:
+                        html = f.read().replace('(TOKEN)', self.token)
+                    with open(index_new, 'w') as f:
+                        f.write(html)
+
+                    webbrowser.open('file://' + index_new, new=2)
+
+                    return "I'm sorry, I couldn't find any devices to play on."
+                sp.start_playback(uris=urls)
+            except spotipy.client.SpotifyException:
+                self.get_new_token()
+
+                if sp.devices()['devices'] == []:
+                    return "I'm sorry, I couldn't find any devices to play on."
+                sp.start_playback(uris=urls)
 
             if (len(songstoplay) == 1):
                 return "Playing " + songstoplay[0]["name"] + " by " + songstoplay[0]["artist"]
@@ -255,7 +274,6 @@ class Spotify(Skill):
                 return "Playing " + str(len(songstoplay)) + " songs, starting with " + songstoplay[0]["name"] + " by " + songstoplay[0]["artist"]
         else:
             return "I'm sorry, I couldn't find anything to play."
-
 
     def extract_song_info(self, userIn):
         inputs = tokenizer(userIn, return_tensors="pt")
