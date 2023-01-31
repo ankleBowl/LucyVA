@@ -1,5 +1,7 @@
 from config import ELEVENLABS_API_KEY, USE_HIGH_QUALITY_VOICE 
 
+import os
+
 path_separator = "/"
 if os.name == "nt":
     path_separator = "\\"
