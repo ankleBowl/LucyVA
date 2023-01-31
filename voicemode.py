@@ -3,6 +3,7 @@ import numpy as np
 import threading
 import whisper
 import brain
+import torch
 
 
 CHUNKSIZE = 8192 # fixed chunk size
@@ -14,6 +15,10 @@ model = whisper.load_model("base.en")
 
 TARGET_AUDIO_HISTORY = 20
 
+if torch.cuda.is_available():
+    options = whisper.DecodingOptions(fp16=True)
+else:
+    options = whisper.DecodingOptions()
 
 # initialize portaudio
 p = pyaudio.PyAudio()
@@ -60,7 +65,6 @@ def check_for_wake_word():
 
         audio = whisper.pad_or_trim(audio)
         mel = whisper.log_mel_spectrogram(audio).to(model.device)
-        options = whisper.DecodingOptions()
         result = whisper.decode(model, mel, options)
 
         clean_words = [word for word in result.text.split(" ") if word != ""]
