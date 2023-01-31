@@ -1,5 +1,9 @@
 from config import ELEVENLABS_API_KEY, USE_HIGH_QUALITY_VOICE 
 
+path_separator = "/"
+if os.name == "nt":
+    path_separator = "\\"
+
 if not USE_HIGH_QUALITY_VOICE:
     # Fast low quality voice for testing
     import gtts
@@ -26,7 +30,7 @@ else:
 
         string = string.strip()
         file_name = string.replace("?", "")
-        if not os.path.exists("cache/" + file_name + ".mp3"):
+        if not os.path.exists("cache" + path_separator + file_name + ".mp3"):
             xi_api_key = ELEVENLABS_API_KEY
             voice_id = "EXAVITQu4vr4xnSDxMaL"
 
@@ -40,8 +44,8 @@ else:
             }
 
             response = requests.post(f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}", headers=headers, json=body)
-            with open("cache/" + file_name + ".mp3", "wb") as f:
+            with open("cache" + path_separator + file_name + ".mp3", "wb") as f:
                 f.write(response.content)
-        playsound.playsound("cache/" + file_name + ".mp3")
+        playsound.playsound("cache" + path_separator + file_name + ".mp3")
         talking = False
         return
