@@ -107,7 +107,6 @@ class Spotify(Skill):
 
         r = requests.post(AUTH_URL, data=url_encoded, headers=headers)
         r = r.json()
-        print(r)
         self.token = r["access_token"]
 
         sp = spotipy.Spotify(auth=self.token)
@@ -247,7 +246,6 @@ class Spotify(Skill):
                 urls.append(song['uri'])
             try:
                 if sp.devices()['devices'] == []:
-                    print("No devices found")
                     self.launch_player()
                 active_device = sp.current_playback()
                 if active_device == None:
@@ -256,7 +254,6 @@ class Spotify(Skill):
             except spotipy.client.SpotifyException:
                 self.get_new_token()
                 if sp.devices()['devices'] == []:
-                    print("No devices found")
                     self.launch_player()
                 active_device = sp.current_playback()
                 if active_device == None:

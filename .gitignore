@@ -5,3 +5,4 @@ config.py
 index-new.html
 utils/
 token.txt
+*.mp3

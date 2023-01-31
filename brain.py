@@ -1,27 +1,34 @@
 from voice import say
+import os
 
-say("I'm starting up. Please wait a moment.")
+os.environ["TOKENIZERS_PARALLELISM"] = "true"
+
+def log(message):
+    print("[BRAIN] " + message)
+
+log("Starting up...")
+# say("I'm starting up. Please wait a moment.")
 
 from skills.skill import Skill
 from skills.spotify import Spotify
 from skills.lights import Lights
+from skills.search import Search
 from similarity import get_similarity
 
 skills = [
     Spotify(),
-    Lights()
+    Lights(),
+    Search()
 ]
 
 for skill in skills:
     response = skill.load()
     if response != None:
         say(response)
-    print("[BRAIN] Loaded skill: " + skill.name)
-
+    log("Loaded skill: " + skill.name)
 
 def process_request(input):
-    print("[BRAIN] Processing request: " + input)
-
+    log("Processing request: " + input)
     global skills
     currentSkill = None
     highestSimilarity = 0
@@ -30,9 +37,9 @@ def process_request(input):
         if similarity > highestSimilarity:
             highestSimilarity = similarity
             currentSkill = skill
-    print("[BRAIN] Decided to use skill: " + currentSkill.name + " | " + str(highestSimilarity))
+    log("Decided to use skill: " + currentSkill.name + " | " + str(highestSimilarity))
     response = currentSkill.run(input)
     if response != None:
         say(response)
 
-say("I'm ready. Ask me anything.")
+# say("I'm ready. Ask me anything.")

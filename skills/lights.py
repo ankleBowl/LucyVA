@@ -51,6 +51,7 @@ class Lights(Skill):
             time.sleep(1)
         
         if self.connectionError:
+            self.log("Error connecting to HomeAssistant")
             return "There was an error connecting to HomeAssistant. Make sure the server IP and access token are correct."
         return None
 

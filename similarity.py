@@ -1,6 +1,5 @@
-print("Loading...")
+print("[SIMILARITY] Initializing engine...")
 from sentence_transformers import SentenceTransformer
-print("Loaded model")
 model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
 def get_similarity(input1, input2):
