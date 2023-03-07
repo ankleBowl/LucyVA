@@ -50,11 +50,6 @@ def check_for_wake_word():
         global previous_lucy_commands
         global time_since_command
 
-        # if (len(recording_data) < MAX_AUDIO_HISTORY):
-        #     analyze = threading.Timer(0.25, check_for_wake_word)
-        #     analyze.start();
-        #     return
-
         audio = np.concatenate(recording_data)
         audio = audio.flatten().astype(np.float32) / 32768.0
 
@@ -93,8 +88,8 @@ def check_for_wake_word():
                     word_to_insert_on = x
             
             already_spoken_words = already_spoken_words[:word_to_insert_on]
-            for word in clean_words:
-                already_spoken_words.append(word)
+            for x in range(len(clean_words)):
+                already_spoken_words.append(clean_words[x])
             user_text = ""
             for word in already_spoken_words:
                 user_text += word + " "
@@ -137,10 +132,6 @@ def check_for_wake_word():
 
 
         previous_lucy_commands.append(lucy_command)
-        
-        # analyze = threading.Timer(0.01, check_for_wake_word)
-        # analyze.start();
-
 
 thread = threading.Thread(target=record_audio_chunk)
 thread.start();

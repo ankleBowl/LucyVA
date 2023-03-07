@@ -29,15 +29,6 @@ class Search(Skill):
         return 0.5;
 
     def run(self, userInput):
-        # self.log("Searching for: " + userInput)
-        # search_results = search(userInput)
-        # contents = ""
-        # for url in search_results:
-        #     self.log("Here's what I found: " + url)
-        #     contents = requests.get(url).text
-        #     break
-        # text = self.text_from_html(contents)
-
         if len(self.conv_history) > 8:
             self.conv_history = self.conv_history[2:]
 

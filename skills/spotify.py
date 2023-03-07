@@ -14,13 +14,19 @@ import random
 import requests
 import base64
 
+from config import FLASK_SERVER_PORT
+
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+
 from transformers import AutoModelForTokenClassification, AutoTokenizer
 model = AutoModelForTokenClassification.from_pretrained("ankleBowl/autotrain-lucy-song-request-1537055286")
 tokenizer = AutoTokenizer.from_pretrained("ankleBowl/autotrain-lucy-song-request-1537055286")
 
 SP_CI = '460f59d74e6349769931a57f0cacf840'
 SP_URL = 'http://127.0.0.1:2000/spotify/login'
-SCOPE = "user-top-read user-modify-playback-state app-remote-control streaming user-read-playback-state user-modify-playback-state"
+SCOPE = "user-top-read user-modify-playback-state app-remote-control streaming user-read-playback-state user-modify-playback-state user-read-email user-read-private"
 AUTH_URL = 'https://accounts.spotify.com/api/token'
 
 sp = None
@@ -57,11 +63,12 @@ class Spotify(Skill):
         super().__init__("Spotify")
 
     def load(self):
+        self.driver = None
+
         global load_run
 
         if not load_run:
             add_route("/spotify", self.handle_signin)
-
         load_run = True
                 
         global sp
@@ -114,6 +121,23 @@ class Spotify(Skill):
         self.log("OAuth login successful")
 
     def handle_signin(self, data):
+        if data == "web_player_loaded":
+            self.player_loaded = True
+            return "Success"
+        if data == "web_player_ready":
+            self.player_ready = True
+            return "Success"
+        if data == "web_player":
+            path = os.path.dirname(os.path.abspath(__file__))
+            index = os.path.join(path, 'spotify/index.html')
+            index_new = os.path.join(path, 'spotify/index-new.html')
+
+            html = ""
+            if os.path.exists(index_new):
+                os.remove(index_new)
+            with open(index, 'r') as f:
+                html = f.read().replace('(TOKEN)', self.token)
+            return html
         if "token" in data:
             token = data.split("-seperator-")[1]
             token = token.split("=")[1]
@@ -244,21 +268,7 @@ class Spotify(Skill):
             urls = []
             for song in songstoplay:
                 urls.append(song['uri'])
-            try:
-                if sp.devices()['devices'] == []:
-                    self.launch_player()
-                active_device = sp.current_playback()
-                if active_device == None:
-                    sp.transfer_playback(sp.devices()['devices'][0]['id'])
-                sp.start_playback(uris=urls)
-            except spotipy.client.SpotifyException:
-                self.get_new_token()
-                if sp.devices()['devices'] == []:
-                    self.launch_player()
-                active_device = sp.current_playback()
-                if active_device == None:
-                    sp.transfer_playback(sp.devices()['devices'][0]['id'])
-                sp.start_playback(uris=urls)
+            self.try_play_songs(urls)
 
             if (len(songstoplay) == 1):
                 return "Playing " + songstoplay[0]["name"] + " by " + songstoplay[0]["artist"]
@@ -266,22 +276,38 @@ class Spotify(Skill):
                 return "Playing " + str(len(songstoplay)) + " songs, starting with " + songstoplay[0]["name"] + " by " + songstoplay[0]["artist"]
         else:
             return "I'm sorry, I couldn't find anything to play."
+        
+    def try_play_songs(self, urls):
+        try: 
+            sp.start_playback(uris=urls)
+        except spotipy.client.SpotifyException as error:
+            error = error.reason
+            print(error)
+            if error == "NO_ACTIVE_DEVICE":
+                if sp.devices()['devices'] == []:
+                    print("Launching player")
+                    self.launch_player()
+                sp.transfer_playback(sp.devices()['devices'][0]['id'])
+                self.try_play_songs(urls)
+            elif error == "":
+                pass
 
     def launch_player(self):
-        path = os.path.dirname(os.path.abspath(__file__))
-        index = os.path.join(path, 'spotify/index.html')
-        index_new = os.path.join(path, 'spotify/index-new.html')
+        if self.driver == None:
+            self.driver = webdriver.Chrome()
+        self.player_ready = False
+        self.player_loaded = False
+        
+        self.driver.get('http://127.0.0.1:' + str(FLASK_SERVER_PORT) + '/spotify/web_player')
+        while not self.player_loaded:
+            print("Waiting for player to load")
+            time.sleep(0.1)
+        self.driver.find_element(By.ID, "play").click()
+        while not self.player_ready:
+            print("Waiting for player to be ready")
+            time.sleep(0.1)
+        time.sleep(0.5)
 
-        html = ""
-        if os.path.exists(index_new):
-            os.remove(index_new)
-        with open(index, 'r') as f:
-            html = f.read().replace('(TOKEN)', self.token)
-        with open(index_new, 'w') as f:
-            f.write(html)
-
-        webbrowser.open('file://' + index_new)
-        time.sleep(3)
 
     def extract_song_info(self, userIn):
         inputs = tokenizer(userIn, return_tensors="pt")

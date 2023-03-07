@@ -6,21 +6,45 @@
     <title>Document</title>
 </head>
 <body>
-    
+    <button id="play" onclick="allow_playback()">allow playback</button>
 </body>
 <script src="https://sdk.scdn.co/spotify-player.js"></script>
 <script>
+    function allow_playback() {
+        console.log("user input recieved")
+    }
+
+    const url = window.location.href + "_loaded"
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState == 4) {
+            console.log("sent loaded")
+        }
+    }
+    xhr.send();
+
     window.onSpotifyWebPlaybackSDKReady = () => {
         const token = '(TOKEN)';
         const player = new Spotify.Player({
-            name: 'Web Playback SDK Quick Start Player',
+            name: 'Lucy',
             getOAuthToken: cb => { cb(token); }
         });
 
-
-        // Ready
         player.addListener('ready', ({ device_id }) => {
             console.log('Ready with Device ID', device_id);
+
+            player.togglePlay();
+
+            const url = window.location.href + "_ready"
+            const xhr = new XMLHttpRequest();
+            xhr.open("GET", url, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState == 4) {
+                    console.log("sent ready")
+                }
+            }
+            xhr.send();
         });
 
         // Not Ready
@@ -41,7 +65,6 @@
         });
 
         player.connect();
-        player.togglePlay();
     }
 </script>
 </html>

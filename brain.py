@@ -17,8 +17,8 @@ from similarity import get_similarity
 
 skills = [
     Spotify(),
-    Lights(),
-    Search()
+    # Lights(),
+    # Search()
 ]
 
 for skill in skills:

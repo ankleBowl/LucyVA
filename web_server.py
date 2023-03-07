@@ -1,10 +1,11 @@
 import flask
 import logging
+from config import FLASK_SERVER_PORT
 
 app = flask.Flask(__name__)
 
 IP_ADDRESS = "0.0.0.0"
-PORT = 2000
+PORT = FLASK_SERVER_PORT
 IS_SSL = False
 
 @app.route('/test', methods=['GET'])
@@ -13,7 +14,6 @@ def home():
 
 def add_route(path, function):
     path = path + "/<data>"
-    # app.route(path, methods=['GET'])(function)
     app.route(path, methods=['GET'])(lambda data: function(data))
 
 import threading

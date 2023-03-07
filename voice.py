@@ -1,8 +1,8 @@
-from config import ELEVENLABS_API_KEY, USE_HIGH_QUALITY_VOICE 
+from config import ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID, VOICE_TYPE
 
 import os
 
-if not USE_HIGH_QUALITY_VOICE:
+if VOICE_TYPE == "GOOGLE":
     # Fast low quality voice for testing
     import gtts
     import playsound
@@ -12,7 +12,7 @@ if not USE_HIGH_QUALITY_VOICE:
         tts.save("temp.mp3")
         playsound.playsound("temp.mp3")
         return
-else:
+elif VOICE_TYPE == "ELEVENLABS":
     # High quality voice for production
     import requests
     import playsound
@@ -34,7 +34,7 @@ else:
 
         if not os.path.exists(new_file_path):
             xi_api_key = ELEVENLABS_API_KEY
-            voice_id = "EXAVITQu4vr4xnSDxMaL"
+            voice_id = ELEVENLABS_VOICE_ID
 
             headers = {
                 "xi-api-key": xi_api_key,
@@ -51,6 +51,7 @@ else:
         playsound.playsound(new_file_path)
         talking = False
         return
-
-if __name__ == "__main__":
-    say("Hello world")
+elif VOICE_TYPE == "TEXT":
+    def say(string):
+        print(string)
+        return
