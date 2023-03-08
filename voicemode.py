@@ -42,6 +42,8 @@ previous_lucy_commands = []
 
 time_since_command = 10
 
+lucy_in_progress = False
+
 def check_for_wake_word():
     while True:
         global model
@@ -49,6 +51,7 @@ def check_for_wake_word():
         global user_text
         global previous_lucy_commands
         global time_since_command
+        global lucy_in_progress
 
         audio = np.concatenate(recording_data)
         audio = audio.flatten().astype(np.float32) / 32768.0
@@ -120,7 +123,16 @@ def check_for_wake_word():
 
         lucy_command = lucy_command.strip().lower()
 
+        if lucy_in_progress == False and lucy_command != "":
+            lucy_in_progress = True
+            print("VAD TRIGGERED")
+            brain.voice_activity_detected()
+
         if lucy_command == "":
+            if lucy_in_progress:
+                lucy_in_progress = False
+                print("VAD ENDED")
+                brain.voice_activity_ended()
             previous_lucy_commands = []
 
         if len(previous_lucy_commands) > 0 and lucy_command != "" and len(lucy_command.split(" ")) == len(previous_lucy_commands[-1].split(" ")):
@@ -129,7 +141,6 @@ def check_for_wake_word():
             recording_data = []
             print("Running command: " + lucy_command)
             brain.process_request(lucy_command)
-
 
         previous_lucy_commands.append(lucy_command)
 

@@ -6,6 +6,7 @@ from similarity import get_similarity
 import threading
 import os
 from web_server import add_route, get_server_ip
+from socket_server import register_new_skill, send_message
 from config import SPOTIFY_CLIENT_SECRET
 from voice import say
 import webbrowser
@@ -26,7 +27,7 @@ tokenizer = AutoTokenizer.from_pretrained("ankleBowl/autotrain-lucy-song-request
 
 SP_CI = '460f59d74e6349769931a57f0cacf840'
 SP_URL = 'http://127.0.0.1:2000/spotify/login'
-SCOPE = "user-top-read user-modify-playback-state app-remote-control streaming user-read-playback-state user-modify-playback-state user-read-email user-read-private"
+SCOPE = "user-top-read user-modify-playback-state app-remote-control streaming user-read-playback-state user-modify-playback-state user-read-email user-read-private user-library-read"
 AUTH_URL = 'https://accounts.spotify.com/api/token'
 
 sp = None
@@ -84,10 +85,16 @@ class Spotify(Skill):
         if self.refresh_token == "":
             return "I'm sorry... but I couldn't connect to Spotify. You'll need to go to my IP address, slash spotify, slash login, if you want to reconnect"
 
-        try:
-            self.get_new_token()
-        except:
-            return "I'm sorry... but I couldn't connect to Spotify. You'll need to go to my IP address, slash spotify, slash login, if you want to reconnect"
+        # try:
+        self.get_new_token()
+        # except:
+        #     return "I'm sorry... but I couldn't connect to Spotify. You'll need to go to my IP address, slash spotify, slash login, if you want to reconnect"
+
+    def voice_activity_detected(self):
+        send_message("spotify,volume=0.5")
+
+    def voice_activity_ended(self):
+        send_message("spotify,volume=1")
 
     def get_new_token(self):
         global sp
@@ -118,6 +125,10 @@ class Spotify(Skill):
 
         sp = spotipy.Spotify(auth=self.token)
         sp.current_user()
+
+        self.liked_songs = LikedSongs()
+        self.liked_songs.add_all_songs(sp)
+
         self.log("OAuth login successful")
 
     def handle_signin(self, data):
@@ -192,9 +203,20 @@ class Spotify(Skill):
 
         songstoplay = []
 
-        if song_name == "" and album_name == "" and artist_name != "":
+
+        if song_name != "" and artist_name != "":
+            query = song_name + " by " + artist_name
+            query = query.lower();
+        elif song_name != "":
+            query = song_name
+            query = query.lower();
+        song = self.liked_songs.get_song(query)
+
+        if song is not None:
+            songstoplay.append({"name": song['name'], "artist": song['artists'][0]['name'], "album": song['album']['name'], "uri": song['uri']})
+        elif song_name == "" and album_name == "" and artist_name != "":
             self.log("Searching for artist")
-            results = sp.search(q='artist:' + artist_name, type='track', limit=10)
+            results = sp.search(q='artist:' + artist_name, type='track', limit=4)
             true_artist = ""
             true_artist_similarity = 0
             for idx, track in enumerate(results['tracks']['items']):
@@ -214,7 +236,7 @@ class Spotify(Skill):
             searchquery = 'album:' + album_name
             if (artist_name != ""):
                 searchquery += ' artist:' + artist_name
-            results = sp.search(q=searchquery, type='track', limit=10)
+            results = sp.search(q=searchquery, type='track', limit=4)
             true_album = ""
             true_album_similarity = 0
             for idx, track in enumerate(results['tracks']['items']):
@@ -234,7 +256,7 @@ class Spotify(Skill):
             searchquery = song_name
             if (artist_name != ""):
                 searchquery += ' ' + artist_name
-            results = sp.search(q=searchquery, type='track', limit=10)
+            results = sp.search(q=searchquery, type='track', limit=4)
             true_song = ""
             true_song_similarity = 0
             userquery = song_name
@@ -282,29 +304,31 @@ class Spotify(Skill):
             sp.start_playback(uris=urls)
         except spotipy.client.SpotifyException as error:
             error = error.reason
-            print(error)
+            self.log(error)
             if error == "NO_ACTIVE_DEVICE":
                 if sp.devices()['devices'] == []:
-                    print("Launching player")
+                    self.log("Launching player")
                     self.launch_player()
                 sp.transfer_playback(sp.devices()['devices'][0]['id'])
                 self.try_play_songs(urls)
-            elif error == "":
+            else:
                 pass
+
 
     def launch_player(self):
         if self.driver == None:
-            self.driver = webdriver.Chrome()
+            options = webdriver.ChromeOptions()
+            self.driver = webdriver.Chrome(options=options)
         self.player_ready = False
         self.player_loaded = False
         
         self.driver.get('http://127.0.0.1:' + str(FLASK_SERVER_PORT) + '/spotify/web_player')
         while not self.player_loaded:
-            print("Waiting for player to load")
+            self.log("Waiting for player to load")
             time.sleep(0.1)
         self.driver.find_element(By.ID, "play").click()
         while not self.player_ready:
-            print("Waiting for player to be ready")
+            self.log("Waiting for player to be ready")
             time.sleep(0.1)
         time.sleep(0.5)
 
@@ -337,3 +361,78 @@ class Spotify(Skill):
                 else:
                     album += " " + token
         return song.strip(), album.strip(), artist.strip()
+
+import json
+import regex as re
+
+class LikedSongs:
+    def __init__(self):
+        self.name_to_uri = {}
+        self.name_and_artist_to_uri = {}
+        self.song_uri_to_song = {}
+
+        self.read_in_songs()
+
+    def add_song(self, song):
+        name = song['name'].lower()
+        in_paren = False
+        output = ""
+        for x in range(len(name)):
+            if name[x] == '(':
+                in_paren = True
+            elif name[x] == ')':
+                in_paren = False
+            elif not in_paren:
+                output += name[x]
+        name = output
+        name = re.sub(r'\W+', '', name)
+        artist = song['artists'][0]['name'].lower()
+        artist = re.sub(r'\W+', '', artist)
+
+        print(name + " by " + artist + " - " + song['uri'])
+
+        self.name_to_uri[name] = song['uri']
+        self.name_and_artist_to_uri[name + "by" + artist] = song['uri']
+        self.song_uri_to_song[song['uri']] = song
+
+    def add_all_songs(self, sp):
+        found_spot = False;
+        x = 0
+        while not found_spot:
+            results = sp.current_user_saved_tracks(limit=50, offset=x)
+            for idx, item in enumerate(results['items']):
+                if self.has_song(item['track']['uri']):
+                    found_spot = True
+                    break
+                track = item['track']
+                self.add_song(track)
+                print("[SPOTIFY] Added song: " + track['name'] + " by " + track['artists'][0]['name']) 
+            x += 50
+            if len(results['items']) < 50:
+                found_spot = True
+        self.write_out_songs()
+
+    def get_song(self, name):
+        name = name.lower()
+        name = re.sub(r'\W+', '', name)
+        if name in self.name_to_uri:
+            return self.song_uri_to_song[self.name_to_uri[name]]
+        elif name in self.name_and_artist_to_uri:
+            return self.song_uri_to_song[self.name_and_artist_to_uri[name]]
+        else:
+            return None
+        
+    def write_out_songs(self):
+        with open('skills/spotify/songs.json', 'w') as outfile:
+            json.dump(self.song_uri_to_song, outfile)
+
+    def read_in_songs(self):
+        if not os.path.exists('skills/spotify/songs.json'):
+            return
+        with open('skills/spotify/songs.json') as json_file:
+            self.song_uri_to_song = json.load(json_file)
+            for song in self.song_uri_to_song.values():
+                self.add_song(song)
+
+    def has_song(self, uri):
+        return uri in self.song_uri_to_song

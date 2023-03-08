@@ -14,6 +14,8 @@
         console.log("user input recieved")
     }
 
+    const token = '(TOKEN)'
+
     const url = window.location.href + "_loaded"
     const xhr = new XMLHttpRequest();
     xhr.open("GET", url, true);
@@ -25,16 +27,16 @@
     xhr.send();
 
     window.onSpotifyWebPlaybackSDKReady = () => {
-        const token = '(TOKEN)';
         const player = new Spotify.Player({
             name: 'Lucy',
             getOAuthToken: cb => { cb(token); }
         });
 
-        player.addListener('ready', ({ device_id }) => {
+        player.addListener('ready', async ({ device_id }) => {
             console.log('Ready with Device ID', device_id);
+            // player.togglePlay();
 
-            player.togglePlay();
+            await transferPlayback(device_id);
 
             const url = window.location.href + "_ready"
             const xhr = new XMLHttpRequest();
@@ -64,7 +66,51 @@
             console.error(message);
         });
 
+        var socket = new WebSocket("ws://localhost:2001");
+        socket.onopen = function() {
+            console.log("connected to websocket server");
+        }
+        socket.onmessage = function(event) {
+            var message = event.data;
+            message = message.split(",")
+            if (message[0] != "spotify") {
+                return;
+            }
+            contents = message[1].split("=")
+            if (contents[0] == "volume") {
+                player.setVolume(parseFloat(contents[1]));
+            }
+        }
+
         player.connect();
+    }
+
+
+    // Bing Search was used to write this code
+    const transferPlayback = async (deviceId) => {
+        const url = 'https://api.spotify.com/v1/me/player';
+        const options = {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+            device_ids: [deviceId],
+            play: true
+            })
+        };
+        
+        try {
+            const response = await fetch(url, options);
+            if (response.ok) {
+            console.log('Playback transferred successfully');
+            } else {
+            console.log('Error transferring playback:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Error transferring playback:', error);
+        }
     }
 </script>
 </html>

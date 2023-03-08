@@ -9,11 +9,10 @@ def log(message):
 log("Starting up...")
 # say("I'm starting up. Please wait a moment.")
 
-from skills.skill import Skill
+# from skills.skill import Skill
 from skills.spotify import Spotify
-from skills.lights import Lights
-from skills.search import Search
-from similarity import get_similarity
+# from skills.lights import Lights
+# from skills.search import Search
 
 skills = [
     Spotify(),
@@ -26,6 +25,14 @@ for skill in skills:
     if response != None:
         say(response)
     log("Loaded skill: " + skill.name)
+
+def voice_activity_detected():
+    for skill in skills:
+        skill.voice_activity_detected()
+
+def voice_activity_ended():
+    for skill in skills:
+        skill.voice_activity_ended()
 
 def process_request(input):
     log("Processing request: " + input)
