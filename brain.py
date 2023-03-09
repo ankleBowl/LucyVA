@@ -14,6 +14,9 @@ from skills.spotify import Spotify
 # from skills.lights import Lights
 # from skills.search import Search
 
+import chromedriver_autoinstaller
+chromedriver_autoinstaller.install()
+
 skills = [
     Spotify(),
     # Lights(),

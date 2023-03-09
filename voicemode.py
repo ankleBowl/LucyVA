@@ -113,9 +113,8 @@ def check_for_wake_word():
         in_command = False
         for x in range(len(words)):
             if WAKE_WORD in words[x]:
-                if (x > 0 and "." in words[x - 1]) or x == 0:
-                    lucy_command = ""
-                    in_command = True
+                lucy_command = ""
+                in_command = True
             elif in_command:
                 lucy_command += words[x] + " "
                 if '.' in words[x]:
