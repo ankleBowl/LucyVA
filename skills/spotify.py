@@ -285,7 +285,6 @@ class Spotify(Skill):
             self.log("Sorry, I couldn't find anything to play.")
             return
         
-        # play all the songs in songstoplay list
         if len(songstoplay) > 0:
             urls = []
             for song in songstoplay:
@@ -303,22 +302,31 @@ class Spotify(Skill):
         try: 
             sp.start_playback(uris=urls)
         except spotipy.client.SpotifyException as error:
+            self.log("Couldn't play songs")
             error = error.reason
-            self.log(error)
             if error == "NO_ACTIVE_DEVICE":
                 if sp.devices()['devices'] == []:
                     self.log("Launching player")
                     self.launch_player()
                 sp.transfer_playback(sp.devices()['devices'][0]['id'])
+                self.log("Retrying play songs")
                 self.try_play_songs(urls)
             else:
-                pass
+                self.log("Refreshing token")
+                self.get_new_token()
+                self.launch_player()
+                self.log("Launching player")
+                self.try_play_songs(urls)
 
 
     def launch_player(self):
+        options = webdriver.ChromeOptions()
         if self.driver == None:
-            options = webdriver.ChromeOptions()
             self.driver = webdriver.Chrome(options=options)
+        else:
+            self.driver.close()
+            self.driver = webdriver.Chrome(options=options)
+
         self.player_ready = False
         self.player_loaded = False
         

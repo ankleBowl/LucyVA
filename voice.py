@@ -48,7 +48,7 @@ elif VOICE_TYPE == "ELEVENLABS":
             response = requests.post(f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}", headers=headers, json=body)
             with open(new_file_path, "wb") as f:
                 f.write(response.content)
-        playsound.playsound(new_file_path)
+        playsound.playsound(new_file_path, False)
         talking = False
         return
 elif VOICE_TYPE == "TEXT":

@@ -34,9 +34,9 @@
 
         player.addListener('ready', async ({ device_id }) => {
             console.log('Ready with Device ID', device_id);
-            // player.togglePlay();
 
             await transferPlayback(device_id);
+            player.togglePlay();
 
             const url = window.location.href + "_ready"
             const xhr = new XMLHttpRequest();
@@ -104,9 +104,9 @@
         try {
             const response = await fetch(url, options);
             if (response.ok) {
-            console.log('Playback transferred successfully');
+                console.log('Playback transferred successfully');
             } else {
-            console.log('Error transferring playback:', response.statusText);
+                console.log('Error transferring playback:', response.statusText);
             }
         } catch (error) {
             console.error('Error transferring playback:', error);

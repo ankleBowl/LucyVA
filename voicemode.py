@@ -106,15 +106,16 @@ def check_for_wake_word():
         words_bad = user_text.split(" ")
         words = []
         for word in words_bad:
-            word = ''.join(e for e in word if e.isalnum() or e == ' ' or e == '%')
+            word = ''.join(e for e in word if e.isalnum() or e == ' ' or e == '%' or e == '.')
             if word != "":
                 words.append(word.lower())
 
         in_command = False
         for x in range(len(words)):
             if WAKE_WORD in words[x]:
-                lucy_command = ""
-                in_command = True
+                if (x > 0 and "." in words[x - 1]) or x == 0:
+                    lucy_command = ""
+                    in_command = True
             elif in_command:
                 lucy_command += words[x] + " "
                 if '.' in words[x]:
@@ -135,14 +136,37 @@ def check_for_wake_word():
                 brain.voice_activity_ended()
             previous_lucy_commands = []
 
-        if len(previous_lucy_commands) > 0 and lucy_command != "" and len(lucy_command.split(" ")) == len(previous_lucy_commands[-1].split(" ")):
-            time_since_command = 0
-            user_text = ""
-            recording_data = []
-            print("Running command: " + lucy_command)
-            brain.process_request(lucy_command)
+        print("Lucy command: " + lucy_command)
+        print("Previous commands: " + str(previous_lucy_commands))
 
-        previous_lucy_commands.append(lucy_command)
+        if len(previous_lucy_commands) > 0 and lucy_command != "":
+            prev_req_is_same = True
+            prev_req = previous_lucy_commands[-1].split(" ")
+            req = lucy_command.split(" ")
+            if len(prev_req) != len(req):
+                prev_req_is_same = False
+            if prev_req_is_same:
+                wrong_words = 0
+                for x in range(len(prev_req)):
+                    if prev_req[x] != req[x]:
+                        wrong_words += 1
+                if wrong_words > 1:
+                    prev_req_is_same = False
+            if prev_req_is_same:
+                time_since_command = 0
+                user_text = ""
+                recording_data = []
+                print("Running command: " + lucy_command)
+                brain.process_request(lucy_command)
+                previous_lucy_commands = []
+
+                with open("requests.txt", "a") as f:
+                    f.write(lucy_command + "\n")
+            else:
+                previous_lucy_commands.append(lucy_command)
+        else:
+            if lucy_command != "":
+                previous_lucy_commands.append(lucy_command)
 
 thread = threading.Thread(target=record_audio_chunk)
 thread.start();
