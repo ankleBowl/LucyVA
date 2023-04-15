@@ -65,15 +65,16 @@ def check_for_wake_word():
         mel = whisper.log_mel_spectrogram(audio).to(model.device)
         result = whisper.decode(model, mel, options)
 
+        result = result.text
         result = ''.join([i for i in result if i.isalpha() or i == ' ' or i == '.' or i == '%'])
         result = result.lower()
         
         if WAKE_WORD in result:
             result = result[result.index(WAKE_WORD) + len(WAKE_WORD):].split(".")[0].strip()
             previous_lucy_commands.append(result)
-            if not len(previous_lucy_commands) > 2:
+            if not len(previous_lucy_commands) > 3:
                 continue
-            if get_similarity_score(previous_lucy_commands[-1], previous_lucy_commands[-3]):
+            if get_similarity_score(previous_lucy_commands[-1], previous_lucy_commands[-2]) and get_similarity_score(previous_lucy_commands[-2], previous_lucy_commands[-3]):
                 previous_lucy_commands = []
                 recording_data = []
                 brain.process_request(result)
