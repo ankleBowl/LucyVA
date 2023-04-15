@@ -74,7 +74,7 @@ def check_for_wake_word():
         if WAKE_WORD in result:
             result = result[result.index(WAKE_WORD) + len(WAKE_WORD):].split(".")[0].strip()
             previous_lucy_commands.append(result)
-            if not len(previous_lucy_commands) > 3:
+            if not len(previous_lucy_commands) > 2:
                 continue
             if get_similarity_score(previous_lucy_commands[-1], previous_lucy_commands[-2]):
                 previous_lucy_commands = []
