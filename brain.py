@@ -13,7 +13,7 @@ say("I'm starting up. Please wait a moment.")
 
 from skills.skill import Skill
 from skills.spotify import Spotify
-# from skills.lights import Lights
+from skills.lights import Lights
 # from skills.search import Search
 
 import chromedriver_autoinstaller
@@ -25,7 +25,7 @@ tokenizer = AutoTokenizer.from_pretrained("ankleBowl/autotrain-conversation-clas
 
 skills = {
     1: Spotify(),
-    # "0": Lights(),
+    0: Lights(),
 }
 
 for skill in skills:

@@ -376,6 +376,9 @@ class LikedSongs:
 
     def add_song(self, song):
         name = song['name'].lower()
+        name.replace(" u ", " you ")
+        name.replace(" ur ", " your ")
+        name.replace(" 2 ", " to ")
         in_paren = False
         output = ""
         for x in range(len(name)):
@@ -415,6 +418,9 @@ class LikedSongs:
 
     def get_song(self, name):
         name = name.lower()
+        name.replace(" u ", " you ")
+        name.replace(" ur ", " your ")
+        name.replace(" 2 ", " to ")
         name = re.sub(r'\W+', '', name)
         if name in self.name_to_uri:
             return self.song_uri_to_song[self.name_to_uri[name]]

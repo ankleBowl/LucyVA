@@ -5,7 +5,6 @@ import whisper
 import brain
 import torch
 
-
 CHUNKSIZE = 8192 # fixed chunk size
 
 # MUST BE ALL LOWERCASE AND ONE WORD
