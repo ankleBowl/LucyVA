@@ -10,14 +10,16 @@ CHUNKSIZE = 8192 # fixed chunk size
 # MUST BE ALL LOWERCASE AND ONE WORD
 WAKE_WORD = "lucy"
 
-model = whisper.load_model("base.en")
+model = None
 
 TARGET_AUDIO_HISTORY = 20
 
 if torch.cuda.is_available():
     options = whisper.DecodingOptions(fp16=True, language="en")
+    model = whisper.load_model("small.en")
 else:
     options = whisper.DecodingOptions(fp16=False, language="en")
+    model = whisper.load_model("base.en")
 
 # initialize portaudio
 p = pyaudio.PyAudio()
@@ -35,8 +37,6 @@ def record_audio_chunk():
         numpydata = np.frombuffer(data, dtype=np.int16).flatten()
         recording_data.append(numpydata)
         
-user_text = ""
-# last_lucy_command = ""
 previous_lucy_commands = []
 
 time_since_command = 10
@@ -67,107 +67,57 @@ def check_for_wake_word():
         mel = whisper.log_mel_spectrogram(audio).to(model.device)
         result = whisper.decode(model, mel, options)
 
-        clean_words = [word for word in result.text.split(" ") if word != ""]
-        already_spoken_words = user_text.split(" ")
-
-        if len(clean_words) < 3:
-            user_text = ""
-        elif user_text == "":
-            clean_text = ""
-            for word in clean_words:
-                clean_text += word + " "
-            user_text = clean_text
-        else:
-            word_to_insert_on = 0
-            max_score = -1;
-
-            for x in range(len(already_spoken_words)):
-                score = 0;
-                for y in range(len(clean_words)):
-                    if x + y > len(already_spoken_words) - 1:
-                        break
-                    if already_spoken_words[x + y] == clean_words[y]:
-                        score += 1
-                if score > max_score:
-                    max_score = score
-                    word_to_insert_on = x
-            
-            already_spoken_words = already_spoken_words[:word_to_insert_on]
-            for x in range(len(clean_words)):
-                already_spoken_words.append(clean_words[x])
-            user_text = ""
-            for word in already_spoken_words:
-                user_text += word + " "
-
-        print(user_text)
-
-        time_since_command += 1
-
-        lucy_command = ""
+        result = result.text
+        result = ''.join([i for i in result if i.isalpha() or i == ' ' or i == '.' or i == '%'])
+        result = result.lower()
         
-        words_bad = user_text.split(" ")
-        words = []
-        for word in words_bad:
-            word = ''.join(e for e in word if e.isalnum() or e == ' ' or e == '%' or e == '.')
-            if word != "":
-                words.append(word.lower())
-
-        in_command = False
-        for x in range(len(words)):
-            if WAKE_WORD in words[x]:
-                lucy_command = ""
-                in_command = True
-            elif in_command:
-                lucy_command += words[x] + " "
-                if '.' in words[x]:
-                    in_command = False
-                    break
-
-        lucy_command = lucy_command.strip().lower()
-
-        if lucy_in_progress == False and lucy_command != "":
-            lucy_in_progress = True
-            print("VAD TRIGGERED")
-            # brain.voice_activity_detected()
-
-        if lucy_command == "":
-            if lucy_in_progress:
-                lucy_in_progress = False
-                print("VAD ENDED")
-                # brain.voice_activity_ended()
+        if WAKE_WORD in result:
+            result = result[result.index(WAKE_WORD) + len(WAKE_WORD):].split(".")[0].strip()
+            previous_lucy_commands.append(result)
+            if not len(previous_lucy_commands) > 3:
+                continue
+            if get_similarity_score(previous_lucy_commands[-1], previous_lucy_commands[-2]):
+                previous_lucy_commands = []
+                recording_data = []
+                brain.process_request(result)
+        else:
             previous_lucy_commands = []
 
-        print("Lucy command: " + lucy_command)
-        print("Previous commands: " + str(previous_lucy_commands))
+def get_similarity_score(text1, text2):
+    text1 = text1.split(" ")
+    text2 = text2.split(" ")
 
-        if len(previous_lucy_commands) > 0 and lucy_command != "":
-            prev_req_is_same = True
-            prev_req = previous_lucy_commands[-1].split(" ")
-            req = lucy_command.split(" ")
-            if len(prev_req) != len(req):
-                prev_req_is_same = False
-            if prev_req_is_same:
-                wrong_words = 0
-                for x in range(len(prev_req)):
-                    if prev_req[x] != req[x]:
-                        wrong_words += 1
-                if wrong_words > 1:
-                    prev_req_is_same = False
-            if prev_req_is_same:
-                time_since_command = 0
-                user_text = ""
-                recording_data = []
-                print("Running command: " + lucy_command)
-                brain.process_request(lucy_command)
-                previous_lucy_commands = []
+    if (len(text1) != len(text2)):
+        shorter = text1 if len(text1) < len(text2) else text2
+        longer = text2 if len(text1) < len(text2) else text1
 
-                with open("requests.txt", "a") as f:
-                    f.write(lucy_command + "\n")
+        new_longer = []
+        skip = False
+        for x in range(len(longer)):
+            if skip:
+                skip = False
+                continue
+            if x == len(longer) - 1:
+                new_longer.append(longer[x])
+                break
+            combined = longer[x] + longer[x + 1]
+            if combined in shorter:
+                new_longer.append(combined)
+                skip = True
             else:
-                previous_lucy_commands.append(lucy_command)
-        else:
-            if lucy_command != "":
-                previous_lucy_commands.append(lucy_command)
+                new_longer.append(longer[x])
+        text1 = shorter
+        text2 = new_longer
+    
+    if len(text1) != len(text2):
+        return False
+
+    word_diffs = 0
+    for x in range(len(text1)):
+        if text1[x] != text2[x]:
+            word_diffs += 1
+
+    return not word_diffs > 1
 
 thread = threading.Thread(target=record_audio_chunk)
 thread.start();
