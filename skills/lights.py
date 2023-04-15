@@ -41,6 +41,8 @@ class Lights(Skill):
         self.connected = False
         self.connectionError = False
 
+        self.default_room = "Garage"
+
         super().__init__("Lights")
 
     def load(self):
@@ -130,11 +132,15 @@ class Lights(Skill):
                 break
         
         if actual_area == None:
-            self.log("Could not determine the area")
-            return "I'm sorry, I couldn't figure out what room you meant."
-
+            actual_area = self.default_room
+            # self.log("Could not determine the area")
+            # return "I'm sorry, I couldn't figure out what room you meant."
 
         should_turn_on, dim_state, dim_percent, color = self.extract_query_info(userIn)
+
+        allowed_colors = ["red", "green", "blue", "yellow", "orange", "purple", "pink", "white", "black", "gray", "grey", "brown", "cyan", "magenta", "teal", "indigo", "violet", "maroon", "turquoise", "lime", "aqua", "chartreuse", "coral", "crimson", "fuchsia", "gold", "khaki", "lavender", "magenta", "olive", "salmon", "sienna", "tan", "thistle", "tomato", "violet", "wheat"]
+        if not color in allowed_colors:
+            color = ""
 
         self.control_lights(actual_area, should_turn_on, color, dim_percent)
 

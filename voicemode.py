@@ -16,9 +16,9 @@ model = whisper.load_model("base.en")
 TARGET_AUDIO_HISTORY = 20
 
 if torch.cuda.is_available():
-    options = whisper.DecodingOptions(fp16=True)
+    options = whisper.DecodingOptions(fp16=True, language="en")
 else:
-    options = whisper.DecodingOptions()
+    options = whisper.DecodingOptions(fp16=False, language="en")
 
 # initialize portaudio
 p = pyaudio.PyAudio()
@@ -52,6 +52,9 @@ def check_for_wake_word():
         global previous_lucy_commands
         global time_since_command
         global lucy_in_progress
+
+        if len(recording_data) == 0:
+            continue
 
         audio = np.concatenate(recording_data)
         audio = audio.flatten().astype(np.float32) / 32768.0
@@ -126,13 +129,13 @@ def check_for_wake_word():
         if lucy_in_progress == False and lucy_command != "":
             lucy_in_progress = True
             print("VAD TRIGGERED")
-            brain.voice_activity_detected()
+            # brain.voice_activity_detected()
 
         if lucy_command == "":
             if lucy_in_progress:
                 lucy_in_progress = False
                 print("VAD ENDED")
-                brain.voice_activity_ended()
+                # brain.voice_activity_ended()
             previous_lucy_commands = []
 
         print("Lucy command: " + lucy_command)

@@ -1,24 +1,19 @@
 from skills.skill import Skill
 
 import spotipy
-from spotipy.oauth2 import SpotifyOAuth
 from similarity import get_similarity
-import threading
 import os
 from web_server import add_route, get_server_ip
-from socket_server import register_new_skill, send_message
+from socket_server import send_message
 from config import SPOTIFY_CLIENT_SECRET
-from voice import say
-import webbrowser
+from voice import say_in_queue
 import time
-import random
 import requests
 import base64
 
 from config import FLASK_SERVER_PORT
 
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 
 from transformers import AutoModelForTokenClassification, AutoTokenizer
@@ -83,12 +78,16 @@ class Spotify(Skill):
             self.refresh_token = f.read()
 
         if self.refresh_token == "":
-            return "I'm sorry... but I couldn't connect to Spotify. You'll need to go to my IP address, slash spotify, slash login, if you want to reconnect"
+            say_in_queue("I'm sorry... but I couldn't connect to Spotify. You'll need to go to my IP address, slash spotify, slash login, if you want to reconnect")
 
-        # try:
-        self.get_new_token()
-        # except:
-        #     return "I'm sorry... but I couldn't connect to Spotify. You'll need to go to my IP address, slash spotify, slash login, if you want to reconnect"
+        try:
+            self.get_new_token()
+        except Exception as e:
+            return "I'm sorry... but I couldn't connect to Spotify. You'll need to go to my IP address, slash spotify, slash login, if you want to reconnect"
+        
+        options = webdriver.ChromeOptions()
+        options.add_argument("--window-size=1,1")
+        self.driver = webdriver.Chrome(options=options)
 
     def voice_activity_detected(self):
         send_message("spotify,volume=0.5")
@@ -156,7 +155,7 @@ class Spotify(Skill):
             with open("skills/spotify/token.txt", "w") as f:
                 f.write(token)
             self.load()
-            say("You should be all good to go now. I've connected to Spotify.")
+            say_in_queue("You should be all good to go now. I've connected to Spotify.")
             return "You can close this window now."
         else:
             url_to_direct_to = "https://accounts.spotify.com/authorize"
@@ -210,6 +209,8 @@ class Spotify(Skill):
         elif song_name != "":
             query = song_name
             query = query.lower();
+        else:
+            query = "THIS IS NOT PRESENT IN THE LIBRARY BECAUSE IT IS NOT A SONG"
         song = self.liked_songs.get_song(query)
 
         if song is not None:
@@ -289,14 +290,13 @@ class Spotify(Skill):
             urls = []
             for song in songstoplay:
                 urls.append(song['uri'])
-            self.try_play_songs(urls)
-
             if (len(songstoplay) == 1):
-                return "Playing " + songstoplay[0]["name"] + " by " + songstoplay[0]["artist"]
+                say_in_queue("Playing " + songstoplay[0]["name"] + " by " + songstoplay[0]["artist"])
             else:
-                return "Playing " + str(len(songstoplay)) + " songs, starting with " + songstoplay[0]["name"] + " by " + songstoplay[0]["artist"]
+                say_in_queue("Playing " + str(len(songstoplay)) + " songs, starting with " + songstoplay[0]["name"] + " by " + songstoplay[0]["artist"])
+            self.try_play_songs(urls)
         else:
-            return "I'm sorry, I couldn't find anything to play."
+            say_in_queue("I'm sorry, I couldn't find anything to play.")
         
     def try_play_songs(self, urls):
         try: 
@@ -320,23 +320,16 @@ class Spotify(Skill):
 
 
     def launch_player(self):
-        options = webdriver.ChromeOptions()
-        if self.driver == None:
-            self.driver = webdriver.Chrome(options=options)
-        else:
-            self.driver.close()
-            self.driver = webdriver.Chrome(options=options)
-
         self.player_ready = False
         self.player_loaded = False
-        
+
         self.driver.get('http://127.0.0.1:' + str(FLASK_SERVER_PORT) + '/spotify/web_player')
         while not self.player_loaded:
-            self.log("Waiting for player to load")
+            # self.log("Waiting for player to load")
             time.sleep(0.1)
         self.driver.find_element(By.ID, "play").click()
         while not self.player_ready:
-            self.log("Waiting for player to be ready")
+            # self.log("Waiting for player to be ready")
             time.sleep(0.1)
         time.sleep(0.5)
 
@@ -397,7 +390,7 @@ class LikedSongs:
         artist = song['artists'][0]['name'].lower()
         artist = re.sub(r'\W+', '', artist)
 
-        print(name + " by " + artist + " - " + song['uri'])
+        # print(name + " by " + artist + " - " + song['uri'])
 
         self.name_to_uri[name] = song['uri']
         self.name_and_artist_to_uri[name + "by" + artist] = song['uri']
