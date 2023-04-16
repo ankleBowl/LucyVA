@@ -12,6 +12,8 @@ import requests
 import bs4
 import time
 
+import csv
+
 openai.api_key = OPENAI_API_KEY
 
 # chrome driver auto installer
@@ -41,9 +43,8 @@ class Search(Skill):
         prompt += f"{len(self.prev_inputs)+1}. {input} - 0 seconds ago\n\n"
         prompt += "Write a google search query to answer the latest question. Use previous questions for context.\n\n"
 
-        print(prompt)
-
         keywords = self.query_openai(prompt)
+        self.log("Keywords: " + keywords)
 
         if keywords[0] == "\"":
             keywords = keywords[1:-1]
@@ -73,6 +74,7 @@ class Search(Skill):
 
         self.prev_inputs.append((input, time.time(), keywords, text))
         
+        self.log("Answer: " + text)
         say_in_queue(text)
 
     def query_openai(self, prompt):

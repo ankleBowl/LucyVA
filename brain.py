@@ -20,12 +20,12 @@ import chromedriver_autoinstaller
 chromedriver_autoinstaller.install()
 
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
-model = AutoModelForSequenceClassification.from_pretrained("ankleBowl/autotrain-conversation-classifier-47670119801")
-tokenizer = AutoTokenizer.from_pretrained("ankleBowl/autotrain-conversation-classifier-47670119801")
+model = AutoModelForSequenceClassification.from_pretrained("ankleBowl/autotrain-skill-detection-50025120122")
+tokenizer = AutoTokenizer.from_pretrained("ankleBowl/autotrain-skill-detection-50025120122")
 
 skills = {
-    2: Search(),
-    1: Spotify(),
+    1: Search(),
+    2: Spotify(),
     0: Lights(),
 }
 
@@ -66,8 +66,6 @@ def process_request(input):
     inputs = tokenizer(input, return_tensors="pt")
     outputs = model(**inputs)
     skill_id = outputs.logits.argmax().item()
-    if not "play" in input and not "lights" in input: # ILL CHANGE THIS OUT LATER IM JUST MALDING TOO HARD
-        skill_id = 2
     currentSkill = skills[skill_id]
     end_logging("brain.process_request.get_similarity")
 
