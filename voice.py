@@ -6,12 +6,14 @@ import time
 if VOICE_TYPE == "GOOGLE":
     # Fast low quality voice for testing
     import gtts
-    import playsound
+    from pydub import AudioSegment
+    from pydub.playback import play
 
     def say(string):
         tts = gtts.gTTS(string)
         tts.save("temp.mp3")
-        playsound.playsound("temp.mp3")
+        sound = AudioSegment.from_mp3("temp.mp3")
+        play(sound)
         return
 elif VOICE_TYPE == "ELEVENLABS":
     # High quality voice for production

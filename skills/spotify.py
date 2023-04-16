@@ -202,7 +202,6 @@ class Spotify(Skill):
 
         songstoplay = []
 
-
         if song_name != "" and artist_name != "":
             query = song_name + " by " + artist_name
             query = query.lower();
@@ -212,79 +211,42 @@ class Spotify(Skill):
         else:
             query = "THIS IS NOT PRESENT IN THE LIBRARY BECAUSE IT IS NOT A SONG"
         song = self.liked_songs.get_song(query)
-
         if song is not None:
-            songstoplay.append({"name": song['name'], "artist": song['artists'][0]['name'], "album": song['album']['name'], "uri": song['uri']})
-        elif song_name == "" and album_name == "" and artist_name != "":
-            self.log("Searching for artist")
-            results = sp.search(q='artist:' + artist_name, type='track', limit=4)
-            true_artist = ""
-            true_artist_similarity = 0
-            for idx, track in enumerate(results['tracks']['items']):
-                found_artist = track['artists'][0]['name']
-                similarity = get_similarity(artist_name, found_artist)
-                if similarity > true_artist_similarity:
-                    true_artist_similarity = similarity
-                    true_artist = found_artist
-            self.log("Found artist: " + true_artist)
-            results = sp.search(q='artist:' + true_artist, type='track', limit=10)
-            for idx, track in enumerate(results['tracks']['items']):
-                if track['artists'][0]['name'] == true_artist:
-                    self.log("Adding song: " + track['name'] + " by " + track['artists'][0]['name'])
-                    songstoplay.append({"name": track['name'], "artist": track['artists'][0]['name'], "album": track['album']['name'], "uri": track['uri']})
-        elif song_name == "" and album_name != "":
-            self.log("Searching for album")
-            searchquery = 'album:' + album_name
-            if (artist_name != ""):
-                searchquery += ' artist:' + artist_name
-            results = sp.search(q=searchquery, type='track', limit=4)
-            true_album = ""
-            true_album_similarity = 0
-            for idx, track in enumerate(results['tracks']['items']):
-                found_album = track['album']['name']
-                similarity = get_similarity(album_name, found_album)
-                if similarity > true_album_similarity:
-                    true_album_similarity = similarity
-                    true_album = found_album
-            self.log("Found album: " + true_album)
-            results = sp.search(q='album:' + true_album, type='track', limit=20)
-            for idx, track in enumerate(results['tracks']['items']):
-                if track['album']['name'] == true_album:
-                    self.log("Adding song: " + track['name'] + " by " + track['artists'][0]['name'])
-                    songstoplay.append({"name": track['name'], "artist": track['artists'][0]['name'], "album": track['album']['name'], "uri": track['uri']})
-        elif song_name != "":
-            self.log("Searching for song")
-            searchquery = song_name
-            if (artist_name != ""):
-                searchquery += ' ' + artist_name
-            results = sp.search(q=searchquery, type='track', limit=4)
-            true_song = ""
-            true_song_similarity = 0
-            userquery = song_name
-            if (artist_name != ""):
-                userquery += ' by ' + artist_name
-            if (album_name != ""):
-                userquery += ' from ' + album_name
-            for idx, track in enumerate(results['tracks']['items']):
-                found_song = track['name']
-                found_artist = track['artists'][0]['name']
-                found_album = track['album']['name']
-                similarityquery = found_song
-                if (artist_name != ""):
-                    similarityquery += " by " + found_artist
-                if (album_name != ""):
-                    similarityquery += " from " + found_album
-                similarity = get_similarity(userquery, similarityquery)
-                self.log("Comparing: " + userquery + " | " + similarityquery + " - " + str(similarity))
-                if similarity > true_song_similarity:
-                    true_song_similarity = similarity
-                    true_song = {"name": track['name'], "artist": track['artists'][0]['name'], "album": track['album']['name'], "uri": track['uri']}
-            self.log("Found song: " + str(true_song))
-            if true_song != "":
-                songstoplay.append(true_song)
+            songstoplay.append(self.spotify_song_to_dict(song))
         else:
-            self.log("Sorry, I couldn't find anything to play.")
-            return
+            self.log("Song not found in library, reverting to Spotify search")
+            if song_name != "":
+                self.log("Searching for song")
+                query = song_name
+                if artist_name != "":
+                    query += " by " + artist_name
+                if album_name != "":
+                    query += " from " + album_name
+                results = self.try_search(query, "track", 4)
+                song = results['tracks']['items'][0]
+                songstoplay.append(self.spotify_song_to_dict(song))
+            elif album_name != "":
+                self.log("Searching for album")
+                query = album_name
+                if artist_name != "":
+                    query += " by " + artist_name
+                results = self.try_search(query, "album", 4)
+                album = results['albums']['items'][0]
+                uri = album['uri']
+                album = sp.album(uri)
+                for track in album['tracks']['items']:
+                    track['album'] = {}
+                    track['album']['name'] = album_name
+                    songstoplay.append(self.spotify_song_to_dict(track))
+            elif artist_name != "":
+                self.log("Searching for artist")
+                query = artist_name
+                results = self.try_search(query, "artist", 4)
+                artist = results['artists']['items'][0]
+                uri = artist['uri']
+                artist = sp.artist_top_tracks(uri)
+                for track in artist['tracks']:
+                    songstoplay.append(self.spotify_song_to_dict(track))
         
         if len(songstoplay) > 0:
             urls = []
@@ -297,6 +259,14 @@ class Spotify(Skill):
             self.try_play_songs(urls)
         else:
             say_in_queue("I'm sorry, I couldn't find anything to play.")
+        
+    def try_search(self, query, type, limit):
+        try:
+            return sp.search(q=query, type=type, limit=limit)
+        except spotipy.client.SpotifyException as error:
+            self.log("Refreshing token")
+            self.get_new_token()
+            return self.try_search(query, type, limit)
         
     def try_play_songs(self, urls):
         try: 
@@ -362,6 +332,9 @@ class Spotify(Skill):
                 else:
                     album += " " + token
         return song.strip(), album.strip(), artist.strip()
+    
+    def spotify_song_to_dict(self, song):
+        return {"name": song['name'], "artist": song['artists'][0]['name'], "album": song['album']['name'], "uri": song['uri']}
 
 import json
 import regex as re
