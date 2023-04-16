@@ -51,7 +51,7 @@ previous_lucy_commands = []
 
 time_since_command = 10
 
-lucy_in_progress = False
+vad_in_progress = False
 
 def check_for_wake_word():
     while True:
@@ -60,7 +60,7 @@ def check_for_wake_word():
         global user_text
         global previous_lucy_commands
         global time_since_command
-        global lucy_in_progress
+        global vad_in_progress
 
         if len(recording_data) == 0:
             continue
@@ -82,8 +82,10 @@ def check_for_wake_word():
         result = result.lower()
         
         if WAKE_WORD in result:
+            vad_in_progress = True
             if len(previous_lucy_commands) == 0:
                 play_listening_sfx()
+                brain.voice_activity_detected()
             result = result[result.index(WAKE_WORD) + len(WAKE_WORD):].split(".")[0].strip()
             previous_lucy_commands.append(result)
             if not len(previous_lucy_commands) > MIN_LUCY_HISTORY:
@@ -93,6 +95,9 @@ def check_for_wake_word():
                 recording_data = []
                 brain.process_request(result)
         else:
+            if vad_in_progress:
+                brain.voice_activity_ended()
+                vad_in_progress = False
             previous_lucy_commands = []
 
 def get_similarity_score(text1, text2):

@@ -88,6 +88,10 @@ def play_loading_sfx():
     thread = threading.Thread(target=play, args=(sound,))
     thread.start()
 
+def play_startup_sfx():
+    sound = AudioSegment.from_mp3("sfx/startup.mp3")
+    thread = threading.Thread(target=play, args=(sound,))
+    thread.start()
 
 import threading
 thread = threading.Thread(target=run_queue)

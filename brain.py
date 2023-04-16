@@ -1,4 +1,4 @@
-from voice import say_in_queue, play_loading_sfx
+from voice import say_in_queue, play_loading_sfx, play_startup_sfx
 import os
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
@@ -6,8 +6,8 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 def log(message):
     print("[BRAIN] " + message)
 
-log("Starting up...") 
-say_in_queue("I'm starting up. Please wait a moment.")
+log("Starting up...")
+play_startup_sfx()
 
 from skills.skill import Skill
 from skills.spotify import Spotify
@@ -60,6 +60,7 @@ def voice_activity_ended():
 
 
 def process_request(input):
+    voice_activity_detected()
     play_loading_sfx()
     start_logging("brain.process_request.get_similarity")
     inputs = tokenizer(input, return_tensors="pt")

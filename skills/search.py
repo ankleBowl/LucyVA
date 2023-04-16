@@ -11,7 +11,7 @@ import openai
 import requests
 import bs4
 
-openai.api_key = "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"
+openai.api_key = OPENAI_API_KEY
 
 # chrome driver auto installer
 import chromedriver_autoinstaller
@@ -27,8 +27,6 @@ class Search(Skill):
     def run(self, input):
         with open("search.txt", "a") as f:
             f.write(input + "\n")
-
-        say_in_queue("I need a second, I'll look that up for you.")
 
         headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.4 Safari/605.1.15"

@@ -63,7 +63,7 @@ class Spotify(Skill):
         self.driver = webdriver.Chrome(options=options)
 
     def voice_activity_detected(self):
-        send_message("spotify,volume=0.5")
+        send_message("spotify,volume=0.25")
 
     def voice_activity_ended(self):
         send_message("spotify,volume=1")
