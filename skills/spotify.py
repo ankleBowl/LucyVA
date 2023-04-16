@@ -205,10 +205,10 @@ class Spotify(Skill):
             urls = []
             for song in songstoplay:
                 urls.append(song['uri'])
-            if (len(songstoplay) == 1):
-                say_in_queue("Playing " + songstoplay[0]["name"] + " by " + songstoplay[0]["artist"])
-            else:
-                say_in_queue("Playing " + str(len(songstoplay)) + " songs, starting with " + songstoplay[0]["name"] + " by " + songstoplay[0]["artist"])
+            # if (len(songstoplay) == 1):
+            #     say_in_queue("Playing " + songstoplay[0]["name"] + " by " + songstoplay[0]["artist"])
+            # else:
+            #     say_in_queue("Playing " + str(len(songstoplay)) + " songs, starting with " + songstoplay[0]["name"] + " by " + songstoplay[0]["artist"])
             self.try_play_songs(urls)
         else:
             say_in_queue("I'm sorry, I couldn't find anything to play.")

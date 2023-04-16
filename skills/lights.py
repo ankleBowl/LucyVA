@@ -117,15 +117,13 @@ class Lights(Skill):
 
         self.control_lights(actual_area, should_turn_on, color, dim_percent)
 
-        message = "Turning the " + actual_area + " lights " + ("on" if should_turn_on else "off")
-        if not color == "" and not dim_percent == 100:
-            message += " to " + color + " and " + str(dim_percent) + " percent brightness"
-        elif not color == "":
-            message += " and setting the color to " + color
-        elif not dim_percent == 100:
-            message += " and setting the brightness to " + str(dim_percent) + " percent"
-    
-        return message
+        # message = "Turning the " + actual_area + " lights " + ("on" if should_turn_on else "off")
+        # if not color == "" and not dim_percent == 100:
+        #     message += " to " + color + " and " + str(dim_percent) + " percent brightness"
+        # elif not color == "":
+        #     message += " and setting the color to " + color
+        # elif not dim_percent == 100:
+        #     message += " and setting the brightness to " + str(dim_percent) + " percent"
 
     def extract_query_info(self, userIn):
         inputs = tokenizer(userIn, return_tensors="pt")
