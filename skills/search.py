@@ -10,6 +10,7 @@ import openai
 
 import requests
 import bs4
+import time
 
 openai.api_key = OPENAI_API_KEY
 
@@ -20,26 +21,39 @@ chromedriver_autoinstaller.install()
 class Search(Skill):
     def __init__(self):
         super().__init__("Search")
+        self.prev_inputs = []
 
     def load(self):
         return None
 
     def run(self, input):
-        with open("search.txt", "a") as f:
-            f.write(input + "\n")
-
         self.log("Received input: " + input)
 
-        prompt = "Rephrase this to a search query, with key terms:\n\n" + input
-        
-        text = self.query_openai(prompt)
+        for i in range(len(self.prev_inputs)-1, -1, -1):
+            if time.time() - self.prev_inputs[i][1] > 120:
+                self.prev_inputs = self.prev_inputs[i+1:]
+                break
 
-        self.log("Searching for: " + text)
+        prompt = "You are rephrasing questions into search queries with keywords. Take context into account.\n\n"
+        for i in range(len(self.prev_inputs)):
+            prompt += f"{i+1}. {self.prev_inputs[i][0]} - {int(time.time() - self.prev_inputs[i][1])} seconds ago - \"{self.prev_inputs[i][2]}\"\n"
+            prompt += f"{self.prev_inputs[i][3]}\n\n"
+        prompt += f"{len(self.prev_inputs)+1}. {input} - 0 seconds ago\n\n"
+        prompt += "Write a google search query to answer the latest question. Use previous questions for context.\n\n"
+
+        print(prompt)
+
+        keywords = self.query_openai(prompt)
+
+        if keywords[0] == "\"":
+            keywords = keywords[1:-1]
+
+        self.log("Searching for: " + keywords)
 
         headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.4 Safari/605.1.15"
         }
-        response = requests.get("https://html.duckduckgo.com/html?q=" + text.replace(" ", "%20"), headers=headers)
+        response = requests.get("https://html.duckduckgo.com/html?q=" + keywords.replace(" ", "%20"), headers=headers)
         soup = bs4.BeautifulSoup(response.text, "html.parser")
         links = soup.find(id="links")
         results = []
@@ -53,9 +67,11 @@ class Search(Skill):
         for i in range(4):
             prompt += f"{i+1}. {results[i][0]}\n"
             prompt += f"{results[i][1]}\n\n"
-        prompt += "Answer the question using the results. Keep your response as brief and concise as possible.\n\n"
+        prompt += "Answer the question using the results. Keep your response very brief and concise.\n\n"
 
         text = self.query_openai(prompt)
+
+        self.prev_inputs.append((input, time.time(), keywords, text))
         
         say_in_queue(text)
 
