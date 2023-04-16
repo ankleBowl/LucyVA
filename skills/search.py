@@ -28,10 +28,18 @@ class Search(Skill):
         with open("search.txt", "a") as f:
             f.write(input + "\n")
 
+        self.log("Received input: " + input)
+
+        prompt = "Rephrase this to a search query, with key terms:\n\n" + input
+        
+        text = self.query_openai(prompt)
+
+        self.log("Searching for: " + text)
+
         headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.4 Safari/605.1.15"
         }
-        response = requests.get("https://html.duckduckgo.com/html?q=" + input.replace(" ", "%20"), headers=headers)
+        response = requests.get("https://html.duckduckgo.com/html?q=" + text.replace(" ", "%20"), headers=headers)
         soup = bs4.BeautifulSoup(response.text, "html.parser")
         links = soup.find(id="links")
         results = []
@@ -47,6 +55,11 @@ class Search(Skill):
             prompt += f"{results[i][1]}\n\n"
         prompt += "Answer the question using the results. Keep your response as brief and concise as possible.\n\n"
 
+        text = self.query_openai(prompt)
+        
+        say_in_queue(text)
+
+    def query_openai(self, prompt):
         completion = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
@@ -55,7 +68,7 @@ class Search(Skill):
             temperature=0
         )
         text = completion.choices[0].message["content"]
-        say_in_queue(text)
+        return text
 
 if __name__ == "__main__":
     search = Search()

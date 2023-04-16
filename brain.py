@@ -65,10 +65,8 @@ def process_request(input):
     start_logging("brain.process_request.get_similarity")
     inputs = tokenizer(input, return_tensors="pt")
     outputs = model(**inputs)
-    outputs = outputs.logits.tolist()[0]
-    highest = max(outputs)
-    skill_id = outputs.index(highest)
-    if highest < 3.75:
+    skill_id = outputs.logits.argmax().item()
+    if not "play" in input and not "lights" in input: # ILL CHANGE THIS OUT LATER IM JUST MALDING TOO HARD
         skill_id = 2
     currentSkill = skills[skill_id]
     end_logging("brain.process_request.get_similarity")
@@ -78,10 +76,7 @@ def process_request(input):
     end_logging("brain.process_request.run")
 
 
-say_in_queue("I'm ready. Ask me anything.")
-
-
-
+# say_in_queue("I'm ready. Ask me anything.")
 
 import time
 
