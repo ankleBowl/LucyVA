@@ -15,8 +15,12 @@ model = None
 TARGET_AUDIO_HISTORY = 20
 
 if torch.cuda.is_available():
+    FAST_MODE = True
     options = whisper.DecodingOptions(fp16=True, language="en")
-    model = whisper.load_model("small.en")
+    if FAST_MODE:
+        model = whisper.load_model("base.en")
+    else:
+        model = whisper.load_model("small.en")
 else:
     options = whisper.DecodingOptions(fp16=False, language="en")
     model = whisper.load_model("base.en")
