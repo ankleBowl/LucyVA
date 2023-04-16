@@ -2,9 +2,6 @@ class Skill:
     def __init__(self, name):
         self.name = name
 
-    def get_similarity(self):
-        pass
-
     def run(self, input):
         pass
 

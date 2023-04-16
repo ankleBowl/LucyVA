@@ -14,25 +14,6 @@ tokenizer = AutoTokenizer.from_pretrained("ankleBowl/autotrain-lucy-light-contro
 
 class Lights(Skill):
     def __init__(self):
-        self.uttrences = [
-            "Turn on the lights.",
-            "Switch on the lights.",
-            "Can you please turn on the lights?",
-            "Please turn off the lights.",
-            "Turn off the lights.",
-            "Switch off the lights.",
-            "Can you please turn off the lights?",
-            "Ligths on.",
-            "Lights off.",
-            "Flip the switch",
-            "Flip the lights.",
-            "Activate the lights.",
-            "Deactivate the lights.",
-            "Illuminate the room.",
-            "Make it dark.",
-            "Bravo 6 going dark"
-        ]
-
         self.areas = []
 
         self.queued_messages = []
@@ -110,14 +91,6 @@ class Lights(Skill):
                 sus = await websocket.recv()
 
             self.queued_messages.clear()
-
-    def get_similarity(self, userInput):
-        highestSimilarity = 0
-        for phrase in self.uttrences:
-            similarity = get_similarity(userInput, phrase)
-            if similarity > highestSimilarity:
-                highestSimilarity = similarity
-        return highestSimilarity
 
     def run(self, userIn):
         self.log("Heard: " + userIn)

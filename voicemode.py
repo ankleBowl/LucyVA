@@ -5,6 +5,8 @@ import whisper
 import brain
 import torch
 
+from voice import play_listening_sfx
+
 from config import USE_FAST_MODE
 
 CHUNKSIZE = 8192 # fixed chunk size
@@ -80,6 +82,8 @@ def check_for_wake_word():
         result = result.lower()
         
         if WAKE_WORD in result:
+            if len(previous_lucy_commands) == 0:
+                play_listening_sfx()
             result = result[result.index(WAKE_WORD) + len(WAKE_WORD):].split(".")[0].strip()
             previous_lucy_commands.append(result)
             if not len(previous_lucy_commands) > MIN_LUCY_HISTORY:

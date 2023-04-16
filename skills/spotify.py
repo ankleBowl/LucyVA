@@ -30,32 +30,6 @@ load_run = False
 
 class Spotify(Skill):
     def __init__(self):
-        self.song_templates = [
-            "I'd like to hear {song}",
-            "play the album {album}",
-            "I'd like to hear the album {album} by the artist named {artist}",
-            "can you please play the band named {artist}",
-            "play the album called {album} by the artist named {artist}",
-            "play the song called {song} by the band called {artist} from {album}",
-            "I'd like to hear the album called {album} by {artist}",
-            "can you please play the album {album} by the artist named {artist}",
-            "I'd like to hear the band named {artist}",
-            "can you please play {song} by the artist named {artist} from the album {album}",
-            "I'd like to hear the album named {album}",
-            "I'd like to hear the song {song} from {album}",
-            "play the artist {artist}",
-            "can you please play the artist named {artist}",
-            "I'd like to hear the artist called {artist}",
-            "can you please play the artist {artist}",
-            "I'd like to hear {song} from the album {album}",
-            "can you please play the song called {song} by {artist}",
-            "can you please play the song called {song}",
-            "play the song {song}",
-            "play {song} by {artist}",
-            "play the song {song} by {artist}",
-            "play the song {song} from the album {album}",
-            "play {song}",
-        ]
         super().__init__("Spotify")
 
     def load(self):
@@ -86,7 +60,6 @@ class Spotify(Skill):
             return "I'm sorry... but I couldn't connect to Spotify. You'll need to go to my IP address, slash spotify, slash login, if you want to reconnect"
         
         options = webdriver.ChromeOptions()
-        options.add_argument("--window-size=1,1")
         self.driver = webdriver.Chrome(options=options)
 
     def voice_activity_detected(self):
@@ -175,26 +148,6 @@ class Spotify(Skill):
             login_page = login_page.replace("(SPOTIFY_SECRET)", SPOTIFY_CLIENT_SECRET)
 
             return login_page
-
-    def get_similarity(self, userInput):
-        possibly_requested_song, possibly_requested_album, possibly_requested_artist = self.extract_song_info(userInput)
-
-        if possibly_requested_song == "" and possibly_requested_album == "" and possibly_requested_artist == "":
-            return 0
-
-        phrases = []
-        for song_template in self.song_templates:
-            song_template.replace("{song}", possibly_requested_song)
-            song_template.replace("{album}", possibly_requested_album)
-            song_template.replace("{artist}", possibly_requested_artist)
-            phrases.append(song_template)
-
-        highestSimilarity = 0
-        for phrase in phrases:
-            similarity = get_similarity(userInput, phrase)
-            if similarity > highestSimilarity:
-                highestSimilarity = similarity
-        return highestSimilarity
 
     def run(self, userIn):
         song_name, album_name, artist_name = self.extract_song_info(userIn)

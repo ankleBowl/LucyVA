@@ -2,12 +2,13 @@ from config import ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID, VOICE_TYPE
 
 import os
 import time
+from pydub import AudioSegment
+from pydub.playback import play
+import threading
 
 if VOICE_TYPE == "GOOGLE":
     # Fast low quality voice for testing
     import gtts
-    from pydub import AudioSegment
-    from pydub.playback import play
 
     def say(string):
         tts = gtts.gTTS(string)
@@ -20,9 +21,6 @@ elif VOICE_TYPE == "ELEVENLABS":
     import requests
     import os
 
-    from pydub import AudioSegment
-    from pydub.playback import play
-
     talking = False
 
     def say(string):
@@ -33,6 +31,9 @@ elif VOICE_TYPE == "ELEVENLABS":
 
         string = string.strip()
         file_name = string.replace("?", "")
+
+        if len(file_name) > 100:
+            file_name = file_name[:100]
 
         new_file_path = os.path.join("cache", file_name + ".mp3")
         # new_file_path = os.path.abspath(new_file_path)
@@ -76,6 +77,17 @@ def run_queue():
             say(message_queue[0])
             message_queue = message_queue[1:]
         time.sleep(0.1)
+
+def play_listening_sfx():
+    sound = AudioSegment.from_mp3("sfx/listening.mp3")
+    thread = threading.Thread(target=play, args=(sound,))
+    thread.start()
+
+def play_loading_sfx():
+    sound = AudioSegment.from_mp3("sfx/searching.mp3")
+    thread = threading.Thread(target=play, args=(sound,))
+    thread.start()
+
 
 import threading
 thread = threading.Thread(target=run_queue)
