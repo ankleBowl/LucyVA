@@ -14,10 +14,13 @@ model = None
 
 TARGET_AUDIO_HISTORY = 20
 
+MIN_LUCY_HISTORY = 2
+
 if torch.cuda.is_available():
     FAST_MODE = True
     options = whisper.DecodingOptions(fp16=True, language="en")
     if FAST_MODE:
+        MIN_LUCY_HISTORY = 3
         model = whisper.load_model("base.en")
     else:
         model = whisper.load_model("small.en")
@@ -78,9 +81,9 @@ def check_for_wake_word():
         if WAKE_WORD in result:
             result = result[result.index(WAKE_WORD) + len(WAKE_WORD):].split(".")[0].strip()
             previous_lucy_commands.append(result)
-            if not len(previous_lucy_commands) > 2:
+            if not len(previous_lucy_commands) > MIN_LUCY_HISTORY:
                 continue
-            if get_similarity_score(previous_lucy_commands[-1], previous_lucy_commands[-2]):
+            if get_similarity_score(previous_lucy_commands[-1], previous_lucy_commands[-MIN_LUCY_HISTORY]):
                 previous_lucy_commands = []
                 recording_data = []
                 brain.process_request(result)
