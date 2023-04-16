@@ -5,6 +5,8 @@ import whisper
 import brain
 import torch
 
+from config import USE_FAST_MODE
+
 CHUNKSIZE = 8192 # fixed chunk size
 
 # MUST BE ALL LOWERCASE AND ONE WORD
@@ -17,9 +19,8 @@ TARGET_AUDIO_HISTORY = 20
 MIN_LUCY_HISTORY = 2
 
 if torch.cuda.is_available():
-    FAST_MODE = True
     options = whisper.DecodingOptions(fp16=True, language="en")
-    if FAST_MODE:
+    if USE_FAST_MODE:
         MIN_LUCY_HISTORY = 3
         model = whisper.load_model("base.en")
     else:
@@ -124,7 +125,7 @@ def get_similarity_score(text1, text2):
         if text1[x] != text2[x]:
             word_diffs += 1
 
-    return not word_diffs > 1
+    return not word_diffs > 0
 
 thread = threading.Thread(target=record_audio_chunk)
 thread.start();
